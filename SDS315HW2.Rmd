@@ -1,0 +1,222 @@
+---
+title: ""
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+---
+
+```{r global_options, include = FALSE}
+
+#importing libraries, datasets, and global code options
+
+knitr::opts_chunk$set(echo = FALSE,
+                      eval = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE
+                      )
+library(tidyverse)
+library(lubridate)
+library(knitr)
+library(rvest)
+
+profs <- read.csv("profs.csv")
+bike <- read.csv("bikeshare.csv")
+billboard <- read.csv("billboard.csv")
+metro <- read.csv("capmetro_UT.csv")
+```
+
+
+## Problem 1: Beauty, or not, in the classroom
+
+\
+
+### Part A
+
+```{r}
+
+ggplot(profs) + geom_histogram(aes(x = profs$eval), binwidth = .1) + labs(title = "UT Austin Professor Evaluation Score Distrubution ", x= "evaluation score")
+
+```
+
+As you can see, this plot displays the evaluation score distrubution. From the plot, it appears that most professors are rated around a 4/5. 
+
+\
+
+### Part B
+
+```{r}
+ggplot(profs) + geom_boxplot(aes(x= profs$native, y = profs$eval)) + labs(title = "Professor Evaluation Score vs Whether or Not They Are a Native", x = "Is the professor a Native to the US?", y = "evaluation score")
+```
+
+From the graph, the  native professors have a higher median of evaluation scores. 
+
+\
+
+### Part C
+
+```{r}
+ggplot(profs) + geom_histogram(aes(x = profs$eval), binwidth = .1) + facet_wrap(~profs$gender) + labs(x= "Evaluation Score Distrubution", title = "Evaluation Score Distrubution Based on Gender")
+```
+
+From a glance at the graph without using any statistics, it appears that male and female have relatively similar evaluation score ratings.
+
+\
+
+### Part D
+
+```{r}
+ggplot(profs) + geom_point(aes(x = profs$beauty, y = profs$eval)) + labs(x = "Professor Beauty Rating (0 is average)", y = "Evaluation Score", title = "Evaluation Score vs Attractiveness" )
+```
+
+The graph seems to show a low positive correlation between attractiveness and evaluation score based on the fact that the graph appears to slightly trend upwards. 
+
+
+\
+
+## Problem 2: bike sharing
+
+\
+
+### Plot A: 
+
+```{r}
+hourly_avg <- bike |>
+  group_by(hr) |>
+  summarize(avg_rentals = mean(total, na.rm = TRUE)) 
+
+
+ggplot(hourly_avg) + geom_line(aes(x=hr, y=hourly_avg$avg_rentals)) + labs(x = "hour", y= "average hourly bike rental ", title = "Bike Rental Average by Hour")
+
+```
+
+As you can see, the amount of bike rentals is highest at 7 pm on average. The amount of bike rentals on average also peaks at 8 am and around 2-3pm but not as high as 7 pm. This is presumably due to people using the bikes to get to work and get home from work since 8am-5pm jobs and 11am-7pm jobs are common. On average the amount of bike rentals is the lowest from midnight to 6 am since people are most likely sleeping around those hours. 
+
+\
+
+### Plot B
+
+```{r}
+
+avg_hourly_bikes_working <- bike |>
+  group_by(hr, workingday) |>
+  summarize(avg_rentals = mean(total, na.rm = TRUE))
+
+
+ggplot(avg_hourly_bikes_working) + geom_line(aes(x=avg_hourly_bikes_working$hr, y=avg_hourly_bikes_working$avg_rentals)) + facet_wrap(~avg_hourly_bikes_working$workingday) + labs(x = "hour", y= "average hourly bike rental ", title = "Bike Rental Average by Hour on Non-Work Days (0) vs Work Days(1)") 
+```
+
+On average, more people use the rental bikes on work days because it is presumably some people's method of transportation to work. Also, for non-workdays, the average bike rental amount peaks in the middle of the day around 2-3pm meanwhile on workdays, the avergae bike rental amount spikes before work at 8 am and after work at 6-7 pm.
+
+\
+
+### Plot C
+
+```{r}
+avg_ridership_nine_am <- bike |>
+  filter(hr == 9) |>
+  group_by(workingday, weathersit) |>
+  summarize(avg_rentals = mean(total, na.rm = TRUE))
+
+ggplot(avg_ridership_nine_am) + geom_bar(aes(x=weathersit, y = avg_rentals), stat = "identity") + facet_wrap(~workingday) + labs(x = "Weather Condition ( Clear Sky/Partly Cloudly (1) | Cloudy/Misty (2) | Light Rain/Storm/Snow (3)" ,y = "average bike rentals", title = "Average Bike Rentals during 9 am on Non-Work Days (0) vs Work Days (1) 
+During Different Weather Conditions")
+```
+
+There is more bike sharing on average during work days compared to non-work days no matter what the weather is during the 9 am hour.
+
+\
+
+## Problem 3 - Capital Metro UT Ridership
+
+\
+
+### 1.
+
+```{r}
+# Recode the categorical variables in sensible, rather than alphabetical, order
+metro = mutate(metro,
+day_of_week = factor(day_of_week,
+levels=c("Mon", "Tue", "Wed","Thu", "Fri", "Sat", "Sun")),
+month = factor(month,
+levels=c("Sep", "Oct","Nov")))
+
+metro_average_by_date <- metro |>
+  group_by(hour_of_day, day_of_week, month) |>
+  summarize(average_boarding = mean(boarding, na.rm = TRUE))
+
+ggplot(metro_average_by_date) + 
+  geom_line(aes(x=hour_of_day, y=average_boarding, color = month)) + 
+  facet_wrap(~day_of_week) + 
+  labs(y = "average people boarding bus")
+  
+```
+
+The plot shows that the hours with the highest boarding are pretty consistent across the weekdays and weekends. On Mondays in September, the average boardings are lower, likely because of the Labor Day, which drags down the average people boarding. As for November, we see lower boardings on Wednesdays through Fridays, probably because many people are staying home or traveling for Thanksgiving which is on thursday, which reduces the average people boarding.
+
+### 2.
+ 
+```{r}
+ggplot(metro) +
+  geom_point(aes(x = temperature, y = boarding, color = weekend)) + facet_wrap(~hour_of_day) +  # Facet by hour of the day
+  labs(
+    title = "Boardings vs. Temperature Faceted by Hour of Day",
+    x = "Temperature (°F)",
+    y = "Number of Boardings")
+```
+
+When we hold hour of day and weekend status constant, temperature in F does not seem to have an affect on the amount of UT students boarding unless it is below freezing temperature since campus would most likely be shut down, and most UT students ride the bus to get on/off campus. 
+
+\
+
+## Problem 4: Wrangling the Billboard Top 100
+
+\
+
+### Part A
+
+```{r}
+billboard_top10 <- billboard |>
+  group_by(song, performer) |>
+  summarize(count = n(), .groups = 'drop') |>
+  slice_max(count, n = 10) 
+
+billboard_top10
+```
+
+As you can see, radioactive by imagine dragons is at the top with 87 weeks spent on the billboard as the #1 song. There seems to be no outliers on this list with the different between the highest and lowest amount of weeks spent as #1 is only 19.
+
+### Part B
+
+```{r}
+musical_diversity <- billboard |>
+  filter(year != 1958 & year != 2021) |>
+  group_by(year) |>
+  summarise(unique_songs = n_distinct(song)) ## Searched up the n_distinct function
+
+ggplot(musical_diversity) + geom_line(aes(x=year, y=unique_songs))
+```
+
+According to the graph, musical diversity was at an all-time high around 1965 until it slowly pummeted, with the lowest it ever got in 2000. However after 2000, the diversity has been steeply climbing up and is almost near the all-time high during around 1965.
+
+\
+
+### Part C
+
+```{r}
+billboard_10_week <- billboard |>
+  group_by(performer, song) |>
+  summarize(weeks_on_chart = n()) |>
+  filter(weeks_on_chart >= 10) 
+
+artists_30_times <- billboard_10_week |>
+  group_by(performer) |>
+  summarize(amount_of_10_week_hits = n()) |>
+  filter(amount_of_10_week_hits >= 30)
+
+ggplot(artists_30_times) + geom_bar(aes(x=performer, y= amount_of_10_week_hits), stat = "identity" ) + coord_flip()
+
+```
+
+As appears, Elton John by far has the most amount of billboard hits that stayed on for atleast 10 weeks. Other than that, the other performers seem to have relatively the same amount of billboard hits that stayed on for atleast 10 weeks.
+
