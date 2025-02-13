@@ -1,2 +1,1 @@
-# SDS315-HW-2
-HW 2 for SDS 315
+# Homework 
