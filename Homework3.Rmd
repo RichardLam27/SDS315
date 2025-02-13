@@ -12,7 +12,7 @@ output:
 
 ### Name: Richard Lam
 ### EID: rwl734
-### GitHub Repo: https://github.com/RichardLam27/SDS315HW3.git
+### GitHub Repo: https://github.com/RichardLam27/SDS315.git
 \
 \
 \
