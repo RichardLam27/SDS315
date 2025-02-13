@@ -1,0 +1,234 @@
+---
+title: ''
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+  pdf_document:
+    toc: true
+    toc_depth: '3'
+---
+
+### Name: Richard Lam
+### EID: rwl734
+### GitHub Repo: https://github.com/RichardLam27/SDS315HW3.git
+\
+\
+\
+
+```{r global_options, include = FALSE}
+
+#importing libraries, datasets, and global code options
+
+knitr::opts_chunk$set(echo = FALSE,
+                      eval = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE
+                      )
+library(tidyverse)
+library(lubridate)
+library(knitr)
+library(rvest)
+library(mosaic)
+
+  
+```
+
+## Problem 1
+### Theory A
+
+```{r}
+gas <- read.csv("gasprices.csv")
+
+
+boot_competitors <- do(10000) * diffmean(Price ~ Competitors, data=resample(gas))
+ggplot(boot_competitors) + geom_histogram(aes(x=diffmean), color = "black") + 
+  labs(x="Mean Difference in Price ($)", y="Count", title="10,000 Bootstrap Samples of Mean Price Difference Between \n Stations That Did vs Did NOT Have Competition in Sight")
+
+competitors_confint <- confint(boot_competitors, level = 0.95)
+```
+
+**Claim:** Gas stations charge more if they lack direct competition in sight \
+**Evidence:**  According to the bootstrapping sampling I did and the confidence interval function, I am 95% confident that mean price of the gas stations with competition in sight has somewhere between 5.55 cents higher price and .835 cents lower price than the gas stations with NO competition in sight. Since my interval of confidence includes 0, there is not strong enough statistical evidence to create any sort of claim regarding the prices of the gas stations. Also, looking at the bootstrap histogram, it is visually shown that there is a decently plausible chance that there is no difference in price. \
+**Conclusion:** In conclusion, the theory is NOT supported by the data due to lack of evidence.
+
+\
+
+### Theory B
+
+```{r}
+
+boot_income <- do(10000) * cor(resample(gas$Price), resample(gas$Income))
+ggplot(boot_income) + geom_histogram(aes(x=cor), color = "black") + 
+  labs(title = "10,000 Bootstrap Sample of Correlation Values of Price vs. Income", x = "cor() values")
+
+income_confint <- confint(boot_income, level = .95)
+```
+
+**Claim:** The richer the area, the higher the gas prices. \
+**Evidence:** After running 10,000 bootstrap samples and using the confint function, I am 95% confident that the average correlation value (cor() value) is somewhere between -0.191533 and 0.1989314 on average. However, since the interval includes 0, there is not strong enough statistical evidence to create a claim about the correlation between income and gas station price. According to the distrubution seen on the graph as well, it is visually displays that a difference of 0 $ is the most likely income. \
+**Conclusion:** In conclusion, the theory is NOT supported by the data.
+
+\
+
+### Theory C
+
+```{r}
+
+boot_stoplight <- do(10000) * diffmean(Price ~ Stoplight, data=resample(gas))
+ggplot(boot_stoplight) + geom_histogram(aes(x=diffmean), color = "black") + 
+  labs(title = "10,000 Bootstrap Sample of Mean Price Difference Between Gas Stations at a \n stoplight vs Gas Stations that are NOT at a stoplight", x = "Mean Price Difference ($)")
+
+stoplight_confint <- confint(boot_stoplight, level = 0.95)
+```
+
+**Claim:** Gas stations at stoplights charge more. \
+**Evidence:** After running 10,000 bootstrap samples and using the confint function, I am 95% confident that gas stations at a stoplight charge between 3.84 cents more and 3.05 cents on less on average than the gas stations NOT at a stoplight. Since the interval includes 0, there is not strong enough statistical evidence to make a claim between the correlation between being at a stoplight vs price. \
+**Conclusion:** In conclusion, the theory is NOT supported by the data. 
+
+\
+
+### Theory D
+
+```{r}
+boot_highway <- do(10000) * diffmean(Price ~ Highway, data = resample(gas))
+ggplot(boot_highway) + geom_histogram(aes(x=diffmean), color = "black") +
+  labs(x = "Mean Difference in Price ($)", title = "10,000 Bootstrap Sample of Mean Price Difference Between Gas Stations With \n Direct Highway access vs Gas Stations with NO Direct Highway Access ")
+
+highway_confint <- confint(boot_highway, level = 0.95)
+```
+
+**Claim:**  Gas stations with direct highway access charge more. \
+**Evidence:** After running 10,000 bootstrap samples and using the confint function, I am 95% confident that gas stations with direct highway access charge between .847 cents to 8.07 cents more on average than the gas stations with NO direct highway access. Since the interval does not include 0 and contains all positive values, we can assume that gas stations with direct highway access on average charge more than gas stations with NO direct highway access. From the graph, it can also be seen that it is visually unlikely that there would be no mean difference in price by looking at the amount of samples that resulted in a mean difference of 0. \
+**Conclusion:** In conclusion, the theory IS supported by the data.
+
+\
+
+### Theory E
+
+```{r}
+
+gas$gasBrand <- ifelse(gas$Brand == "Shell", "Shell", "notShell")
+
+boot_gasBrand <- do(10000)*diffmean(Price ~ gasBrand, data=resample(gas))
+ggplot(boot_gasBrand) + geom_histogram(aes(x=diffmean), color = "black") +
+  labs(x = "Mean Difference in Price ($)", title = "10,000 Bootstrap Sample of Mean Price Difference Between Shell Gas Stations vs \n Non-Shell Gas Stations")
+
+gasBrand_confint <- confint(boot_gasBrand, level = 0.95)
+
+```
+
+**Claim:**  Shell charges more than all other non-Shell brands. \
+**Evidence:** After running 10,000 bootstrap samples and using the confint function, I am 95% confident that Shell gas stations charge between 1.00 cents lower and 6.44 cents on higher on average than non-Shell brands. Since the interval includes 0, there is not enough statistical evidence to make a claim regarding the price difference between Shell vs non-Shell brands. From the graph, it can also be seen that there is a fairly decent chance that the price difference is 0, because the bar representing the amount of bootstrap samples with a difference of 0 is a "medium" size. \
+**Conclusion:** In conclusion, the theory is NOT supported by the data.
+
+\
+
+## Problem 2
+
+### Part A
+
+```{r}
+sclass <- read.csv("sclass.csv")
+
+AMG_2011 <- sclass |>
+  filter(year == "2011" & trim == "63 AMG" )
+
+boot_AMG <- do(10000) * mean(~ mileage, data = resample(AMG_2011))
+
+confint_AMG <- confint(boot_AMG, level = 0.95)
+```
+
+**Answer:** Based on my 10,000 sample bootstrap samples, I can say with 95% confidence that the average amount of mileage for a 2011 AMG that hit the market when the data was collected is between 26309 and 31763 miles.
+
+\
+
+### Part B
+
+```{r}
+
+trim_550_year_2011 <- sclass |>
+  filter(year == "2014" & trim == "550") |>
+  mutate(isBlack = ifelse(color == "Black", "TRUE", "FALSE"))
+
+
+
+boot_color <- do(10000) * prop(~isBlack, data=resample(trim_550_year_2011), success="TRUE")
+
+confint_color <- confint(boot_color, level = 0.95)
+
+
+```
+
+**Answer:** Based on my 10,000 sample bootstrap samples, I can say with 95% confidence that the proportion of all 2014 S-Class 550s that were painted black is between the interval of .4164 and .4527
+
+\
+
+## Problem 3 
+### Part A
+
+```{r}
+nbc <- read.csv("nbc_pilotsurvey.csv")
+
+nbc_happy <- nbc |>
+  filter(Show == "Living with Ed" | Show == "My Name is Earl")
+
+boot_nbc_happy <- do(10000) * diffmean(Q1_Happy ~ Show, data=resample(nbc_happy))
+
+confint_nbc_happy <- confint(boot_nbc_happy, level = 0.95)
+
+```
+
+**Question** Is there evidence that one show consistently produces a higher mean Q1_Happy response among viewers? \
+**Answer:** Based on 10,000 bootstrap samples of the mean difference between the Q1_Happy rating of the shows "Living with Ed" and the show "My Name is Earl", I can say with 95% confidence that the show "Living with Ed" on average has between .3966 more Q1_Happy rating and .1042 less Q1_Happy rating than the show "My Name is Earl"(using confint() function on the boot strap samples). Since this interval includes 0 though, there is not a strong conclusion that I could create about which show has a higher mean Q1_Happy rating.
+
+\
+
+### Part B
+
+```{r}
+
+nbc_annoyed <- nbc |>
+  filter(Show == "The Biggest Loser" | Show == "The Apprentice: Los Angeles")
+
+boot_nbc_annoyed <- do(10000) * diffmean(Q1_Annoyed ~ Show, data = resample(nbc_annoyed))
+
+confint_nbc_annoyed <- confint(boot_nbc_annoyed, level = 0.95)
+
+```
+
+**Question:** Is there evidence that one show consistently produces a higher mean Q1_Annoyed response among viewers? \
+**Answer:** Based on 10,000 bootstrap samples of the mean difference between the Q1_Happy rating of the shows "The Apprentice: Los Angeles" and "The Biggest Loser", I can say with 95% confidence that the difference in mean annoyance rating is somewhere between -0.5216 and -0.0183 (using confint() function on the boot strap samples). Since the interval only contains negative numbers and The Apprentice was subtracted from The Biggest Loser, we can say using statistics that The Apprentice most likely annoyed more people than The Biggest Loser.
+
+\
+
+### Part C
+
+```{r}
+
+nbc_confusing <- nbc |>
+  filter(Show == "Dancing with the Stars") |>
+  mutate(isAgree =ifelse(Q2_Confusing == "4" | Q2_Confusing =="5", "TRUE", "FALSE"))
+
+boot_nbc_confusing = do(10000) * prop(~isAgree, data=resample(nbc_confusing), success = "TRUE")
+confint_nbc_confusing = confint(boot_nbc_confusing, level = 0.95)
+```
+**Question:** What proportion of American TV watchers would we expect to give a response of 4 or greater to the “Q2_Confusing” question? \
+**Answer:** Based on 10,000 bootstrap samples of the proportion of 4s or 5s given to the Q2_confusing rating out of 181 watchers, I can say with 95% confidence that the interval is between 0.0387 to 0.1215(using confint() function on the boot strap samples). In other words, I am 95% confident between 3.87% to 12.15% of "Dancing with the Stars" watchers were confused.
+
+\
+
+## Problem 4
+
+```{r}
+ebay <- read.csv("ebay.csv")
+ebay <- ebay |>
+  mutate(revenue_ratio = (rev_after / rev_before))
+
+boot_ebay <- do(10000) * diffmean(revenue_ratio ~ adwords_pause, data=resample(ebay))
+confint_ebay <- confint(boot_ebay, level = 0.95)
+```
+**Question:** Is the revenue ratio is the same in the treatment and control groups, or whether instead the data favors the idea that paid search advertising on Google creates extra revenue for EBay \
+**Answer:** Based on 10,000 bootstrap samples of the mean difference in revenue ratios for DMAs that stopped paying for ads and DMAs that kept paying, I can say with 95% confidence that the mean difference in revenue ratio for DMAs that stopped paying and DMAs that continued paying for paid search ads on Google is between the interval -0.0909 and -0.0126. Since all the values in the interval are negative, we can conclude that eBay did infact make more money using paid search than not using paid search.
+
