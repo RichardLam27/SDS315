@@ -1,0 +1,201 @@
+---
+title: ''
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+  pdf_document:
+    toc: true
+    toc_depth: '3'
+---
+### Name: Richard Lam
+### EID: rwl734
+### GitHub Repo: https://github.com/RichardLam27/SDS315.git
+\
+\
+\
+
+```{r global_options, include = FALSE}
+
+#importing libraries, datasets, and global code options
+
+knitr::opts_chunk$set(echo = FALSE,
+                      eval = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE
+                      )
+library(tidyverse)
+library(lubridate)
+library(knitr)
+library(rvest)
+library(mosaic)
+
+  
+```
+
+## Problem 1 - Iron Bank
+
+
+In this problem we are investigation the employees of the Iron Bank for insider trading. For our null hypothesis, we assume that the flagged trades at Iron Bank occur at the same baseline rate (2.4%) as all other trades. The test statistic we used is the number of flagged trades out of the 2021 trades. 
+
+```{r}
+
+simulated_flags <- rbinom(100000, 2021, .024)
+
+p_value <- mean(simulated_flags >= 70)
+simulated_flags_dataframe <- data.frame(Flagged_Trades = simulated_flags)
+
+ggplot(simulated_flags_dataframe) + geom_histogram(aes(x = Flagged_Trades), color = "black") + 
+  labs(title = "Monte Carlo Simulation of Flagged Trades", x = "Number of Flagged Trades", y = "Frequency")
+
+
+```
+
+After running the simulation, the calculated p-value is 0.00188, which is way less than p = .05, which indicates that the number of flagged trades is highly unlikely to occur. Because of this, we reject the null hypothesis that the flagged trades for Iron Bank occurs at the expected 2.4%.  
+
+\
+
+## Problem 2 
+
+In this problem, we are investigating a popular local restaurant chain, Gourmet Bites for a higher-than-usual number of health code violation reports. Our null hypothesis states that the rate of health code violations at Gourmet Bites is the same as the citywide average of 3%
+
+```{r}
+
+violations <- rbinom(100000, 50, .03)
+
+p_value_2 <- mean(violations >= 8)
+
+violations_dataframe <- data.frame(violations = violations)
+
+ggplot(violations_dataframe) + geom_histogram(aes(x = violations), binwidth = 1, color = "black")
+```
+
+After running the simulation, we got a p value of .0001, which is way less than the widely accepted significance level of .05, we can safely reject the null hypothesis that the rate of health code violations at Gourmet Bites is the same as the citywide average of 3%.
+
+\
+
+## Problem 3
+
+In this problem, we are investigating jury selection bias. Our null hypothesis is that the distribution of the jurors matches the population proportions and our alternative hypothesis. Our alternative hypothesis is that the distribution of jurors significantly differs from the population proportions.
+
+```{r}
+library(tibble)  
+
+expected_distribution <- c(Group1 = 0.30, Group2 = 0.25, Group3 = 0.20, Group4 = 0.15, Group5 = 0.10)
+
+observed_counts <- c(Group1 = 85, Group2 = 56, Group3 = 59, Group4 = 27, Group5 = 13)
+
+num_jurors <- sum(observed_counts)
+
+
+jury_data <- tibble(
+  observed = observed_counts,
+  expected = expected_distribution * num_jurors
+)
+
+simulated_counts <- rmultinom(1, num_jurors, expected_distribution)
+
+
+chi_squared_statistic <- function(observed, expected) {
+  sum((observed - expected)^2 / expected)
+}
+
+chi2 <- chi_squared_statistic(simulated_counts, num_jurors * expected_distribution)
+
+
+num_simulations <- 10000
+chi2_sim <- replicate(num_simulations, {
+  simulated_counts <- rmultinom(1, num_jurors, expected_distribution)
+  chi_squared_statistic(simulated_counts, num_jurors * expected_distribution)
+})
+
+p_value <- mean(chi2_sim >= chi2)
+
+
+
+```
+
+After running the chi squared test simulation, we got a p-value of .0067, which is way lower than the accepted significance value of .05. Therefore, we reject our null hypothesis, since there is strong evidence that the jury selection is significantly different from expectation, possibly indicating bias.
+
+\
+
+## Problem 4
+
+### Part A
+
+```{r}
+brown_sentences <- readLines("brown_sentences.txt", warn = FALSE)
+
+
+preprocess_text <- function(text) {
+  text <- toupper(text)  # Convert to uppercase
+  text <- gsub("[^A-Z]", "", text)  # Remove non-letter characters
+  return(text)
+}
+
+
+count_letters <- function(text) {
+  letter_counts <- table(strsplit(text, NULL))
+  letter_freq <- rep(0, 26)  # Create vector for all letters A-Z
+  names(letter_freq) <- LETTERS  # Assign names A-Z
+  letter_freq[names(letter_counts)] <- as.numeric(letter_counts)  # Fill counts
+  return(letter_freq)
+}
+
+
+expected_frequencies <- c(
+  A = 0.0817, B = 0.0149, C = 0.0278, D = 0.0425, E = 0.1270, 
+  F = 0.0223, G = 0.0202, H = 0.0609, I = 0.0697, J = 0.0015, 
+  K = 0.0077, L = 0.0403, M = 0.0241, N = 0.0675, O = 0.0751, 
+  P = 0.0193, Q = 0.0009, R = 0.0599, S = 0.0633, T = 0.0906, 
+  U = 0.0276, V = 0.0098, W = 0.0236, X = 0.0015, Y = 0.0197, Z = 0.0007
+)
+
+
+compute_chi_squared <- function(sentence) {
+  observed_counts <- count_letters(preprocess_text(sentence))
+  sentence_length <- sum(observed_counts)  # Total letters
+  
+  if (sentence_length == 0) {
+    return(NA)  
+  }
+  
+  expected_counts <- expected_frequencies * sentence_length
+  chi_squared <- sum((observed_counts - expected_counts)^2 / expected_counts)
+  return(chi_squared)
+}
+
+
+chi_squared_reference <- sapply(brown_sentences, compute_chi_squared)
+chi_squared_reference <- na.omit(chi_squared_reference)  
+
+
+given_sentences <- c(
+  "She opened the book and started to read the first chapter, eagerly anticipating what might come next.",
+  "Despite the heavy rain, they decided to go for a long walk in the park, crossing the main avenue by the fountain in the center.",
+  "The museum’s new exhibit features ancient artifacts from various civilizations around the world.",
+  "He carefully examined the document, looking for any clues that might help solve the mystery.",
+  "The students gathered in the auditorium to listen to the guest speaker’s inspiring lecture.",
+  "Feeling vexed after an arduous and zany day at work, she hoped for a peaceful and quiet evening at home, cozying up after a quick dinner with some TV, or maybe a book on her upcoming visit to Auckland.",
+  "The chef demonstrated how to prepare a delicious meal using only locally sourced ingredients, focusing mainly on some excellent dinner recipes from Spain.",
+  "They watched the sunset from the hilltop, marveling at the beautiful array of colors in the sky.",
+  "The committee reviewed the proposal and provided many points of useful feedback to improve the project’s effectiveness.",
+  "Despite the challenges faced during the project, the team worked tirelessly to ensure its successful completion, resulting in a product that exceeded everyone’s expectations."
+)
+
+
+chi_squared_values <- sapply(given_sentences, compute_chi_squared)
+
+p_values <- sapply(chi_squared_values, function(x) mean(chi_squared_reference >= x))
+
+
+results <- data.frame(
+  Sentence = 1:10,
+  Chi_Squared = round(chi_squared_values, 3),
+  P_Value = round(p_values, 3)
+)
+
+```
+
+After calculating the p values, sentence 6 is the AI generated sentence, because sentence 6 has a p-value of 0.009, which is much lower than the other sentences. This suggests it has an unusual letter frequency distribution compared to natural English sentences from the Brown Corpus, meaning it has been watermarked by a LLM.
