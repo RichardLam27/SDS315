@@ -1,0 +1,304 @@
+---
+title: ''
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+  pdf_document:
+    toc: true
+    toc_depth: '3'
+---
+
+### Name: Richard Lam
+### EID: rwl734
+### GitHub Repo: https://github.com/RichardLam27/SDS315.git
+\
+\
+\
+
+```{r global_options, include = FALSE}
+
+#importing libraries, datasets, and global code options
+
+knitr::opts_chunk$set(echo = FALSE,
+                      eval = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE
+                      )
+library(tidyverse)
+library(lubridate)
+library(knitr)
+library(rvest)
+library(mosaic)
+library(dplyr)
+library(broom)
+library(moderndive)
+  
+```
+
+## Problem 1: Manufacturing flaws in circuit boards
+### Part A
+```{r}
+solder <- read_csv("solder.csv")
+# Plot 1: Effect of Opening on Skips
+ggplot(solder, aes(x = Opening, y = skips)) +
+  geom_boxplot(fill = "lightblue") +
+  labs(
+    title = "Effect of Solder Gun Opening Size on Solder Skips",
+    x = "Opening Size",
+    y = "Number of Solder Skips"
+  )
+
+```
+The boxplot shows that circuit boards manufactured with a large solder gun opening tend to have fewer solder skips compared to medium and snall openings, indicating that a larger opening is associated with higher quality in terms of fewer defects.
+
+\
+
+```{r}
+# Plot 2: Effect of Solder Type on Skips
+ggplot(solder, aes(x = Solder, y = skips)) +
+  geom_boxplot(fill = "lightgreen") +
+  labs(
+    title = "Effect of Solder Alloy Thickness on Solder Skips",
+    x = "Solder Type",
+    y = "Number of Solder Skips"
+  )
+```
+This boxplot indicates that boards soldered with thick alloy generally result in fewer solder skips than those using thin alloy, suggesting that thicker solder material may lead to a more reliable manufacturing outcome.
+
+\
+
+### Part B
+
+```{r}
+# Fit regression model
+model <- lm(skips ~ Opening * Solder, data = solder)
+
+# Get estimates with 95% confidence intervals
+tidy(model, conf.int = TRUE)
+```
+\
+
+### Part C
+
+(Intercept) = 0.393
+→ This is the expected number of skips when using a Large Opening and Thick Solder.
+
+OpeningM = 2.407
+→ For boards using Medium Opening and Thick Solder, the number of skips increases by ~2.41 compared to Large Opening with Thick Solder.
+
+OpeningS = 5.127
+→ For Small Opening and Thick Solder, the skips increase by ~5.13 compared to Large Opening with Thick Solder.
+
+SolderThin = 2.280
+→ For Large Opening and Thin Solder, the skips increase by ~2.28 compared to Large Opening with Thick Solder.
+
+OpeningM:SolderThin = -0.74
+→ The additional effect of combining Medium Opening with Thin Solder is a reduction of ~0.74 skips compared to what would be expected from their individual effects.
+
+OpeningS:SolderThin = 9.653
+→ The additional effect of combining Small Opening and Thin Solder is an increase of ~9.65 skips compared to what would be expected from their separate effects. This interaction is highly significant (p < 0.001), indicating a strong synergy (in a negative way) between these two choices.
+
+\
+
+### Part D
+To minimize the number of solder skips, the best combination is: Large Opening + Thick Solder.
+This is because this is the reference group in your model and corresponds to the lowest baseline number of skips 
+
+## Problem 2: Grocery store prices
+### Part A
+
+```{r}
+groceries <- read.csv("groceries.csv") |>
+  mutate(Store = trimws(Store))
+
+avg_price_store <- groceries |>
+  group_by(Store) |>
+  summarize(avg_price = mean(Price, na.rm = TRUE)) |>
+  arrange(avg_price)
+
+ggplot(avg_price_store, aes(x = avg_price, y = fct_reorder(Store, avg_price))) +
+  geom_col(fill = "steelblue") +
+  labs(title = "Average Price per Store",
+       x = "Average Price ($)",
+       y = "Store",
+       caption = "Bar chart showing average product prices at each store. Some variation may be due to different product availability.") +
+  theme_minimal()
+```
+
+\
+
+### Part B
+
+```{r}
+product_availability <- groceries |>
+  group_by(Product) |>
+  summarize(num_stores = n())
+
+ggplot(product_availability, aes(x = num_stores, y = fct_reorder(Product, num_stores))) +
+  geom_col(fill = "darkorange") +
+  labs(title = "Number of Stores Selling Each Product",
+       x = "Number of Stores",
+       y = "Product",
+       caption = "Some products are sold in all stores (e.g., milk, eggs), while others are less widely available.") +
+  theme_minimal()
+```
+
+### Part C
+
+```{r}
+# Trim whitespace in Type and set 'Grocery' as reference level
+groceries <- groceries |>
+  mutate(Type = trimws(Type),
+         Type = factor(Type),
+         Type = relevel(Type, ref = "Grocery"))
+
+# Fit model
+model_type <- lm(Price ~ Product + Type, data = groceries)
+
+# Get 95% confidence interval for Convenience vs Grocery
+i <- broom::tidy(model_type, conf.int = TRUE) |>
+  filter(term == "TypeConvenience") |>
+  select(conf.low, conf.high) |>
+  mutate(across(everything(), ~ round(.x, 2)))
+# Extract numeric bounds
+low <- i$conf.low
+high <- i$conf.high
+
+tidy(model_type, conf.int = TRUE) |>
+  filter(str_detect(term, "Type"))
+
+cat("Answer: Compared with ordinary grocery stores, convenience stores charge between ",
+    low, " and ", high, " dollars more for the same product.", sep = "")
+```
+
+\
+
+### Part D
+```{r}
+# Fit model with no intercept to get direct store effects
+model_store <- lm(Price ~ Product + Store - 1, data = groceries)
+store_effects <- tidy(model_store) |>
+  filter(str_detect(term, "^Store")) |>
+  arrange(estimate) |>
+  mutate(Store = str_remove(term, "Store"))
+
+# Two lowest-price stores
+lowest_two <- store_effects |> slice(1:2)
+lowest_two
+
+# Two highest-price stores
+highest_two <- store_effects |> slice((n()-1):n())
+highest_two
+
+
+```
+Lowest-price stores: `r paste(lowest_two$Store, collapse = " and ")`
+
+Highest-price stores: `r paste(highest_two$Store, collapse = " and ")`
+
+
+\
+
+### Part E
+
+```{r}
+# Extract coefficients from store_effects by Store name
+cm_coef <- store_effects %>% filter(Store == "Central Market") %>% pull(estimate)
+heb_coef <- store_effects %>% filter(Store == "H-E-B ") %>% pull(estimate)
+# Compute difference
+difference <- cm_coef - heb_coef
+
+cat(
+  "**Central Market coefficient:** ", round(cm_coef, 2), "
+
+",
+  "**HEB coefficient:** ", round(heb_coef, 2), "
+
+",
+  "**Difference (Central Market – HEB):** ", round(difference, 2), " dollars.
+
+",
+  "This indicates that Central Market charges ", round(difference, 2),
+  " more for the same product compared to HEB, which is small relative to the overall store coefficient range of ",
+  round(diff(range(store_effects$estimate)), 2), ".",
+  sep = ""
+)
+```
+\
+
+### Part F
+
+```{r}
+# Create Income10K variable
+groceries <- groceries %>%
+  mutate(Income10K = Income / 10000)
+
+# Fit model of Price on Product and Income10K
+model_income <- lm(Price ~ Product + Income10K, data = groceries)
+
+# Summarize model
+summary(model_income)
+
+# Compute standardized effect for Income10K
+df_std <- groceries %>%
+  select(Price, Income10K)
+sd_inc <- sd(df_std$Income10K)
+sd_price <- sd(df_std$Price)
+beta_inc <- coef(model_income)["Income10K"]
+std_effect <- beta_inc * sd_inc / sd_price
+
+# Interpret sign and magnitude
+direction <- if(beta_inc > 0) "more" else "less"
+cat(
+  "**Sign:** The coefficient for Income10K is ", round(beta_inc, 2), ". This indicates that consumers in poorer ZIP codes pay ",
+  if(beta_inc < 0) "more" else "less", " for the same product on average compared to wealthier ZIP codes.
+
+",
+  "**Magnitude:** A one-standard-deviation increase in income is associated with a ", round(std_effect, 2),
+  " standard-deviation change in price for the same product.",
+  sep = ""
+)
+```
+
+## Question 3: Redlining
+### Part A
+
+A. ZIP codes with a higher percentage of minority residents tend to have more FAIR policies per 100 housing units.
+\
+Decision: True.
+\
+Evidence: Figure A1 shows an upward‐sloping linear trend between minority percentage and FAIR policies per 100 units. The simple regression in Table A (from model_A) yields an estimate for minority of 0.014 (SE 0.002, p < 0.001) with a 95% CI of [0.009, 0.018], and R² = 0.516, confirming a positive association.
+
+### Part B
+
+B. The evidence suggests an interaction effect between minority percentage and the age of the housing stock in the way that these two variables are related to the number of FAIR policies in a ZIP code.
+\
+Decision: False.
+\
+Correction: Interaction between minority and age is not statistically evaluated in the provided output. Table B (model_B) shows only a weak, non‐significant association of age on minority (estimate 0.398, p = 0.125). To assess interaction with age on policies, one would need a model including minority × age; this was not provided, so the statement as written is unsupported.
+
+### Part C
+C. The relationship between minority percentage and number of FAIR policies per 100 housing units is stronger in high-fire-risk ZIP codes than in low-fire-risk ZIP codes.
+\
+Decision: Undecidable/Ambiguous.
+\
+Rationale: Figure C1 overlays separate linear fits for High vs. Low fire risk. Table C (model_C) shows the interaction term minority:fire_riskLow estimate = –0.001 (SE 0.006, p = 0.839), indicating no significant difference in slopes. However, a more thorough comparison (e.g., separate R² or slope CIs by group) would clarify whether the slopes differ meaningfully.
+
+### Part D
+D. Even without controlling for any other variables, income “explains away” all the association between minority percentage and FAIR policy uptake.
+\
+Decision: False.
+\
+Evidence: Comparing Table D1 (minority only) and Table D2 (minority + income): the minority coefficient decreases only slightly from 0.014 to 0.010 but remains statistically significant (p = 0.002, 95% CI [0.004, 0.015]). Income does not “explain away” the effect of minority percentage.
+
+### Part E
+E. Minority percentage and number of FAIR policies are still associated at the ZIP code level, even after controlling for income, fire risk, and housing age.
+\
+Decision: True.
+\
+Evidence: Table E (model_E) shows minority estimate = 0.008 (SE 0.003, p = 0.006, 95% CI [0.003, 0.014]) when controlling for income, fire, and age, indicating a persistent positive association after adjustment.
+
+
+
